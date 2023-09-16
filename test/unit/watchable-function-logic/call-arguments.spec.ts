@@ -1,8 +1,7 @@
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
+import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/signers';
 import { FakeContract, smock } from '@src';
 import { Caller, Caller__factory, Receiver } from '@typechained';
 import chai, { AssertionError, expect } from 'chai';
-import { BigNumber } from 'ethers';
 import { ethers } from 'hardhat';
 
 chai.should();
@@ -54,7 +53,7 @@ describe('WatchableFunctionLogic: Call arguments', () => {
   });
 
   describe('calledWithValue', async () => {
-    const value = BigNumber.from(123);
+    const value = 123n;
 
     it('should throw when the watchablecontract is not called', async () => {
       expect(() => {
@@ -63,11 +62,11 @@ describe('WatchableFunctionLogic: Call arguments', () => {
     });
 
     it('should throw when the watchablecontract is called with incorrect arguments', async () => {
-      await fake.connect(signer).receiveEmpty({ value: value.sub(1) });
+      await fake.connect(signer).receiveEmpty({ value: value - 1n });
 
       expect(() => {
         fake.receiveEmpty.should.have.been.calledWithValue(value);
-      }).to.throw(AssertionError);
+      }).to.throw(RangeError);
     });
 
     it('should not throw when the watchablecontract is called with the correct arguments', async () => {
@@ -76,9 +75,9 @@ describe('WatchableFunctionLogic: Call arguments', () => {
     });
 
     it('should not throw when the watchablecontract is called with incorrect arguments but the correct ones as well', async () => {
-      await fake.connect(signer).receiveEmpty({ value: value.sub(1) });
+      await fake.connect(signer).receiveEmpty({ value: value - 1n });
       await fake.connect(signer).receiveEmpty({ value: value });
-      await fake.connect(signer).receiveEmpty({ value: value.add(1) });
+      await fake.connect(signer).receiveEmpty({ value: value + 1n });
 
       fake.receiveEmpty.should.have.been.calledWithValue(value);
     });
@@ -164,6 +163,6 @@ describe('WatchableFunctionLogic: Call arguments', () => {
   });
 
   async function sendBooleanToWatchableContract(value: boolean): Promise<void> {
-    await caller.call(fake.address, fake.interface.encodeFunctionData('receiveBoolean', [value]));
+    await caller.call(fake.getAddress(), fake.interface.encodeFunctionData('receiveBoolean', [value]));
   }
 });

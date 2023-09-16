@@ -4,7 +4,7 @@
 import { diffJson } from 'diff';
 import { inspect } from 'util';
 import { WatchableFunctionLogic } from '../logic/watchable-function-logic';
-import { convertStructToPojo, humanizeTimes, isStruct } from '../utils';
+import { convertSolidityStructToPojo, humanizeTimes, isSolidityStruct } from '../utils';
 import * as color from './color';
 
 function sinonFormat(...args: any[]) {
@@ -70,8 +70,8 @@ export const formatters: { [key: string]: (watchableContract: WatchableFunctionL
         let parsedExpectedArgs = expectedArgs[j];
 
         if (parsedCalledArgs) {
-          if (isStruct(parsedCalledArgs)) {
-            parsedCalledArgs = convertStructToPojo(parsedCalledArgs);
+          if (isSolidityStruct(parsedCalledArgs)) {
+            parsedCalledArgs = convertSolidityStructToPojo(parsedCalledArgs);
           }
 
           parsedCalledArgs = quoteStringValue(parsedCalledArgs);

@@ -1,4 +1,4 @@
-import { FactoryOptions } from '@nomiclabs/hardhat-ethers/types';
+import { FactoryOptions } from '@nomicfoundation/hardhat-ethers/types';
 import { BaseContract, ContractFactory, ethers } from 'ethers';
 import hre from 'hardhat';
 import { matchers } from './chai-plugin/matchers';

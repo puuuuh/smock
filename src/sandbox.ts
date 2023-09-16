@@ -1,12 +1,14 @@
 import { VM } from '@nomicfoundation/ethereumjs-vm';
-import { FactoryOptions } from '@nomiclabs/hardhat-ethers/types';
-import { BaseContract, ContractFactory, ethers } from 'ethers';
-import hre from 'hardhat';
+import { FactoryOptions } from '@nomicfoundation/hardhat-ethers/types';
+import hre, { ethers } from 'hardhat';
 import { ethersInterfaceFromSpec } from './factories/ethers-interface';
 import { createFakeContract, createMockContractFactory } from './factories/smock-contract';
 import { ObservableVM } from './observable-vm';
 import { FakeContract, FakeContractOptions, FakeContractSpec, MockContractFactory } from './types';
 import { getHardhatBaseProvider, makeRandomAddress } from './utils';
+import { BaseContract, ContractFactory, Signer } from 'ethers';
+import { ExecResult } from '@nomicfoundation/ethereumjs-evm';
+import { MessageTrace } from 'hardhat/internal/hardhat-network/stack-traces/message-trace';
 
 // Handle hardhat ^2.4.0
 let decodeRevertReason: (value: Buffer) => string;
@@ -41,14 +43,11 @@ export class Sandbox {
       this.vm,
       opts.address || makeRandomAddress(),
       await ethersInterfaceFromSpec(spec),
-      opts.provider || hre.ethers.provider
+      opts.provider || ethers.provider
     );
   }
 
-  async mock<T extends ContractFactory>(
-    contractName: string,
-    signerOrOptions?: ethers.Signer | FactoryOptions
-  ): Promise<MockContractFactory<T>> {
+  async mock<T extends ContractFactory>(contractName: string, signerOrOptions?: Signer | FactoryOptions): Promise<MockContractFactory<T>> {
     return createMockContractFactory(this.vm, contractName, signerOrOptions);
   }
 
@@ -71,11 +70,17 @@ export class Sandbox {
     // Here we're fixing with hardhat's internal error management. Smock is a bit weird and messes
     // with stack traces so we need to help hardhat out a bit when it comes to smock-specific errors.
     const originalManagerErrorsFn = node._manageErrors.bind(node);
-    node._manageErrors = async (vmResult: any, vmTrace: any, vmTracerError?: any): Promise<any> => {
+    node._manageErrors = async (vmResult: ExecResult, vmTrace: MessageTrace | undefined, vmTracerError: Error | undefined): Promise<any> => {
+      // @ts-ignore
       if (vmResult.exceptionError && vmResult.exceptionError.error === 'smock revert') {
-        return new TransactionExecutionError(`VM Exception while processing transaction: revert ${decodeRevertReason(vmResult.returnValue)}`);
-      }
+        const returnDataExplanation = decodeRevertReason(vmResult.returnValue);
 
+        const fallbackMessage = `VM Exception while processing transaction: revert ${returnDataExplanation}`;
+
+        vmTrace!!.returnData = vmResult.returnValue;
+
+        return new TransactionExecutionError(fallbackMessage);
+      }
       return originalManagerErrorsFn(vmResult, vmTrace, vmTracerError);
     };
 

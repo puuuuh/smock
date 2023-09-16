@@ -17,21 +17,21 @@ describe('ProgrammableFunctionLogic: Revert', () => {
     it('should be able to revert without reason', async () => {
       fake.getBoolean.reverts();
 
-      await expect(fake.callStatic.getBoolean()).to.be.reverted;
+      await expect(fake.getBoolean.staticCall()).to.be.reverted;
     });
 
     it('should be able to cancel revert with a reset', async () => {
       fake.getBoolean.reverts();
       fake.getBoolean.reset();
 
-      await expect(fake.callStatic.getBoolean()).to.not.be.reverted;
+      await expect(fake.getBoolean.staticCall()).to.not.be.reverted;
     });
 
     it('should be able to revert with a string value', async () => {
       const reason = 'a crazy problem';
       fake.getBoolean.reverts(reason);
 
-      await expect(fake.callStatic.getBoolean()).to.be.revertedWith(reason);
+      await expect(fake.getBoolean.staticCall()).to.be.revertedWith(reason);
     });
   });
 
@@ -39,21 +39,21 @@ describe('ProgrammableFunctionLogic: Revert', () => {
     it('should be able to revert without reason', async () => {
       fake.fallback.reverts();
 
-      await expect(ethers.provider.call({ to: fake.address })).to.be.reverted;
+      await expect(ethers.provider.call({ to: await fake.getAddress() })).to.be.reverted;
     });
 
     it('should be able to cancel revert with a reset', async () => {
       fake.fallback.reverts();
       fake.fallback.reset();
 
-      await expect(ethers.provider.call({ to: fake.address })).to.not.be.reverted;
+      await expect(ethers.provider.call({ to: await fake.getAddress() })).to.not.be.reverted;
     });
 
     it('should be able to revert with a string value', async () => {
       const reason = 'a crazy problem';
       fake.fallback.reverts(reason);
 
-      await expect(ethers.provider.call({ to: fake.address })).to.be.revertedWith(reason);
+      await expect(ethers.provider.call({ to: await fake.getAddress() })).to.be.revertedWith(reason);
     });
   });
 });

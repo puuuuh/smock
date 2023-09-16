@@ -441,14 +441,14 @@ describe('WatchableFunctionLogic: Call arguments', () => {
   });
 
   async function sendBooleanToWatchableContract<T extends BaseContract>(watchablecontract: FakeContract<T>): Promise<void> {
-    await caller.call(watchablecontract.address, watchablecontract.interface.encodeFunctionData('receiveBoolean', [true]));
+    await caller.call(await watchablecontract.getAddress(), watchablecontract.interface.encodeFunctionData('receiveBoolean', [true]));
   }
 
   async function sendStringToWatchableContract<T extends BaseContract>(watchablecontract: FakeContract<T>): Promise<void> {
-    await caller.call(watchablecontract.address, watchablecontract.interface.encodeFunctionData('receiveString', ['something']));
+    await caller.call(await watchablecontract.getAddress(), watchablecontract.interface.encodeFunctionData('receiveString', ['something']));
   }
 
   async function sendEmptyToWatchableContract<T extends BaseContract>(watchablecontract: FakeContract<T>): Promise<void> {
-    await caller.call(watchablecontract.address, watchablecontract.interface.encodeFunctionData('receiveEmpty', []));
+    await caller.call(await watchablecontract.getAddress(), watchablecontract.interface.encodeFunctionData('receiveEmpty', []));
   }
 });

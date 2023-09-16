@@ -51,6 +51,6 @@ describe('WatchableFunctionLogic: At call', () => {
   });
 
   async function callReceiveString(str: string): Promise<void> {
-    await caller.call(fake.address, fake.interface.encodeFunctionData('receiveString', [str]));
+    await caller.call(await fake.getAddress(), fake.interface.encodeFunctionData('receiveString', [str]));
   }
 });

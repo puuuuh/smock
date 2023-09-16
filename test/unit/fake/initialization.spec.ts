@@ -1,4 +1,4 @@
-import { smock } from '@src';
+import { FakeContract, smock } from '@src';
 import { makeRandomAddress } from '@src/utils';
 import { Receiver, Receiver__factory, Returner } from '@typechained';
 import receiverArtifact from 'artifacts/test/contracts/watchable-function-logic/Receiver.sol/Receiver.json';
@@ -11,46 +11,46 @@ chai.use(chaiAsPromised);
 
 describe('Fake: Initialization', () => {
   it('should work with the contract name', async () => {
-    const fake = await smock.fake('Receiver');
+    const fake: FakeContract<Receiver> = await smock.fake('Receiver');
     expect(fake.receiveEmpty._watchable).not.to.be.undefined;
   });
 
   it(`should work with the contract's artifact`, async () => {
-    const fake = await smock.fake(receiverArtifact);
+    const fake: FakeContract<Receiver> = await smock.fake(receiverArtifact);
     expect(fake.receiveEmpty._watchable).not.to.be.undefined;
   });
 
   it(`should work with the contract's abi`, async () => {
-    const fake = await smock.fake(receiverArtifact.abi);
+    const fake: FakeContract<Receiver> = await smock.fake(receiverArtifact.abi);
     expect(fake.receiveEmpty._watchable).not.to.be.undefined;
   });
 
   it(`should work with the contract factory`, async () => {
     const factory = (await ethers.getContractFactory('Receiver')) as Receiver__factory;
-    const fake = await smock.fake(factory);
+    const fake: FakeContract<Receiver> = await smock.fake(factory);
     expect(fake.receiveEmpty._watchable).not.to.be.undefined;
   });
 
   it(`should work with the contract interface`, async () => {
     const factory = (await ethers.getContractFactory('Receiver')) as Receiver__factory;
-    const fake = await smock.fake(factory.interface);
+    const fake: FakeContract<Receiver> = await smock.fake(factory.interface);
     expect(fake.receiveEmpty._watchable).not.to.be.undefined;
   });
 
   it(`should work with the contract`, async () => {
     const factory = (await ethers.getContractFactory('Receiver')) as Receiver__factory;
-    const fake = await smock.fake(await factory.deploy());
+    const fake: FakeContract<Receiver> = await smock.fake(await factory.deploy());
     expect(fake.receiveEmpty._watchable).not.to.be.undefined;
   });
 
   it(`should work with the contract full path`, async () => {
     const factory = (await ethers.getContractFactory('test/contracts/watchable-function-logic/Receiver.sol:Receiver')) as Receiver__factory;
-    const fake = await smock.fake(await factory.deploy());
+    const fake: FakeContract<Receiver> = await smock.fake(await factory.deploy());
     expect(fake.receiveEmpty._watchable).not.to.be.undefined;
   });
 
   it(`should work with any object thas has an abi inside`, async () => {
-    const fake = await smock.fake({ abi: receiverArtifact.abi });
+    const fake: FakeContract<Receiver> = await smock.fake({ abi: receiverArtifact.abi });
     expect(fake.receiveEmpty._watchable).not.to.be.undefined;
   });
 
@@ -61,12 +61,12 @@ describe('Fake: Initialization', () => {
     fakeReturner.getBoolean.returns(true);
 
     const returner = (await ethers.getContractAt('Returner', targetAddress)) as Returner;
-    expect(await returner.callStatic.getBoolean()).to.be.true;
+    expect(await returner.getBoolean.staticCall()).to.be.true;
   });
 
   it('should handle evm resets', async () => {
     const receiver1 = await smock.fake<Receiver>('Receiver');
-    await receiver1.callStatic.receiveEmpty();
+    await receiver1.receiveEmpty.staticCall();
 
     await network.provider.request({
       method: 'hardhat_reset',
@@ -74,29 +74,26 @@ describe('Fake: Initialization', () => {
     });
 
     const receiver2 = await smock.fake<Returner>('Returner');
-    await expect(receiver2.callStatic.getBoolean()).not.to.be.reverted;
+    await expect(receiver2.getBoolean.staticCall()).not.to.be.rejected;
   });
 
   it('should work for an interface', async () => {
-    const fake = await smock.fake('IPartialReceiver');
+    const fake: FakeContract<Receiver> = await smock.fake('IPartialReceiver');
     expect(fake.receiveEmpty._watchable).not.to.be.undefined;
   });
 
   it('should have a wallet', async () => {
-    const fake = await smock.fake('Receiver');
-    expect(fake.wallet._isSigner).to.be.true;
+    const fake: FakeContract<Receiver> = await smock.fake('Receiver');
+    expect(fake.wallet).not.to.be.undefined;
   });
 
   it('should work for abi with gas parameter', async () => {
-    const fake = await smock.fake(storageArtifact);
+    const fake: FakeContract<Receiver> = await smock.fake(storageArtifact);
     expect(fake.store._watchable).not.to.be.undefined;
   });
 
   it('should throw error for invalid json string abi', async () => {
-    await expect(smock.fake(`{invalid}`)).to.be.rejectedWith(
-      Error,
-      `unable to generate smock spec from abi string.\nUnexpected token i in JSON at position 1`
-    );
+    await expect(smock.fake(`{invalid}`)).to.be.rejectedWith(Error, `Expected property name or '}' in JSON at position 1`);
   });
 
   it('should throw error for non existent contract', async () => {

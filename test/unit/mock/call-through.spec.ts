@@ -18,17 +18,17 @@ describe('Mock: Call through', () => {
   });
 
   it('should call getters', async () => {
-    expect(await mock.count()).to.equal(1);
+    expect(await mock.count()).to.equal(BigInt(1));
   });
 
   it('should call methods', async () => {
     await mock.add(10);
-    expect(await mock.count()).to.equal(11);
+    expect(await mock.count()).to.equal(BigInt(11));
   });
 
   it('should be able to override returns', async () => {
     mock.count.returns(123);
-    expect(await mock.count()).to.equal(123);
+    expect(await mock.count()).to.equal(BigInt(123));
   });
 
   it('should be able to override a function that reverts', async () => {
@@ -37,7 +37,7 @@ describe('Mock: Call through', () => {
   });
 
   it('should be able to check function calls', async () => {
-    await mock.add(10);
-    expect(mock.add).to.be.calledOnceWith(10);
+    await mock.add(10n);
+    expect(mock.add).to.be.calledOnceWith(10n);
   });
 });

@@ -7,7 +7,7 @@
       "name": "Unit Tests",
       "runtimeExecutable": "yarn",
       "cwd": "${workspaceFolder}",
-      "args": ["test"],
+      "args": ["test", "-g", "should be able to check function calls"],
       "internalConsoleOptions": "openOnSessionStart",
       "skipFiles": ["<node_internals>/**"],
       "smartStep": true

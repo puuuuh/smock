@@ -2,7 +2,7 @@ import { MockContract, MockContractFactory, smock } from '@src';
 import { ADDRESS_EXAMPLE, BYTES32_EXAMPLE, BYTES_EXAMPLE } from '@test-utils';
 import { StorageGetter, StorageGetter__factory } from '@typechained';
 import { expect } from 'chai';
-import { BigNumber, utils } from 'ethers';
+import { parseUnits } from 'ethers';
 
 describe('Mock: Readable storage logic', () => {
   let storageGetterFactory: MockContractFactory<StorageGetter__factory>;
@@ -18,7 +18,7 @@ describe('Mock: Readable storage logic', () => {
 
   describe('getVariable', () => {
     it('should be able to get a uint256', async () => {
-      const value = utils.parseUnits('123');
+      const value = parseUnits('123');
       await mock.setVariable('_uint256', value);
 
       const getValue = await mock.getVariable('_uint256');
@@ -26,8 +26,8 @@ describe('Mock: Readable storage logic', () => {
     });
 
     it('should be able to get a uint16 in a packed slot', async () => {
-      const value = BigNumber.from('1');
-      const value2 = BigNumber.from('2');
+      const value = BigInt('1');
+      const value2 = BigInt('2');
       await mock.setPackedUintA(value);
       await mock.setPackedUintB(value2);
 
@@ -44,7 +44,7 @@ describe('Mock: Readable storage logic', () => {
     });
 
     it('should be able to get an int256', async () => {
-      const value = BigNumber.from(-1);
+      const value = BigInt(-1);
       await mock.setVariable('_int256', value);
 
       const getValue = await mock.getVariable('_int256');
@@ -55,7 +55,7 @@ describe('Mock: Readable storage logic', () => {
       await mock.setVariable('_address', ADDRESS_EXAMPLE);
 
       const getValue = await mock.getVariable('_address');
-      expect(getValue).to.equal(await mock.getAddress());
+      expect(getValue).to.equal(await mock.getFunction('getAddress()').staticCall());
     });
 
     it('should be able to get a boolean', async () => {
@@ -89,7 +89,7 @@ describe('Mock: Readable storage logic', () => {
 
     it('should be able to get a simple struct', async () => {
       const struct = {
-        valueA: BigNumber.from(1234),
+        valueA: BigInt(1234),
         valueB: true,
       };
       await mock.setVariable('_simpleStruct', struct);
@@ -100,10 +100,10 @@ describe('Mock: Readable storage logic', () => {
 
     it('should be able to get an address in a packed struct', async () => {
       const struct = {
-        packedA: BigNumber.from(2),
-        packedB: BigNumber.from(1),
-        packedC: BigNumber.from(2),
-        packedD: BigNumber.from(1),
+        packedA: BigInt(2),
+        packedB: BigInt(1),
+        packedC: BigInt(2),
+        packedD: BigInt(1),
         packedE: ADDRESS_EXAMPLE,
       };
       await mock.setVariable('_packedStruct', struct);

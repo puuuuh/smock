@@ -11,80 +11,80 @@ describe('ProgrammableFunctionLogic: When called with', () => {
 
   describe('returns', () => {
     it('should override default behaviour', async () => {
-      fake.getUint256.returns(1);
-      fake.getUint256.whenCalledWith(123).returns(456);
+      fake.getUint256.returns(1n);
+      fake.getUint256.whenCalledWith(123n).returns(456n);
 
-      expect(await fake.callStatic.getUint256(123)).to.equal(456);
+      expect(await fake.getUint256.staticCall(123n)).to.equal(456);
     });
 
     it('should override itself', async () => {
-      fake.getUint256.whenCalledWith(123).returns(1);
-      fake.getUint256.whenCalledWith(123).returns(2);
+      fake.getUint256.whenCalledWith(123n).returns(1n);
+      fake.getUint256.whenCalledWith(123n).returns(2n);
 
-      expect(await fake.callStatic.getUint256(123)).to.equal(2);
+      expect(await fake.getUint256.staticCall(123n)).to.equal(2n);
     });
 
     it('should be reseted', async () => {
-      fake.getUint256.whenCalledWith(123).returns(1);
+      fake.getUint256.whenCalledWith(123n).returns(1n);
       fake.getUint256.reset();
-      fake.getUint256.returns(2);
+      fake.getUint256.returns(2n);
 
-      expect(await fake.callStatic.getUint256(123)).to.equal(2);
+      expect(await fake.getUint256.staticCall(123n)).to.equal(2n);
     });
 
     it('should live together with default', async () => {
-      fake.getUint256.returns(1);
-      fake.getUint256.whenCalledWith(123).returns(456);
+      fake.getUint256.returns(1n);
+      fake.getUint256.whenCalledWith(123n).returns(456n);
 
-      expect(await fake.callStatic.getUint256(122)).to.equal(1);
-      expect(await fake.callStatic.getUint256(123)).to.equal(456);
+      expect(await fake.getUint256.staticCall(122n)).to.equal(1n);
+      expect(await fake.getUint256.staticCall(123n)).to.equal(456n);
     });
 
     it('should handle multiple calls', async () => {
-      fake.getUint256.whenCalledWith(1).returns(10);
-      fake.getUint256.whenCalledWith(2).returns(20);
+      fake.getUint256.whenCalledWith(1n).returns(10n);
+      fake.getUint256.whenCalledWith(2n).returns(20n);
 
-      expect(await fake.callStatic.getUint256(1)).to.equal(10);
-      expect(await fake.callStatic.getUint256(2)).to.equal(20);
+      expect(await fake.getUint256.staticCall(1n)).to.equal(10n);
+      expect(await fake.getUint256.staticCall(2n)).to.equal(20n);
     });
   });
 
   describe('reverts', () => {
     it('should override default behaviour', async () => {
       fake.getUint256.reverts('a');
-      fake.getUint256.whenCalledWith(123).reverts('b');
+      fake.getUint256.whenCalledWith(123n).reverts('b');
 
-      await expect(fake.callStatic.getUint256(123)).to.be.revertedWith('b');
+      await expect(fake.getUint256.staticCall(123n)).to.be.revertedWith('b');
     });
 
     it('should override itself', async () => {
-      fake.getUint256.whenCalledWith(123).reverts('a');
-      fake.getUint256.whenCalledWith(123).reverts('b');
+      fake.getUint256.whenCalledWith(123n).reverts('a');
+      fake.getUint256.whenCalledWith(123n).reverts('b');
 
-      await expect(fake.callStatic.getUint256(123)).to.be.revertedWith('b');
+      await expect(fake.getUint256.staticCall(123n)).to.be.revertedWith('b');
     });
 
     it('should be reseted', async () => {
-      fake.getUint256.whenCalledWith(123).reverts('a');
+      fake.getUint256.whenCalledWith(123n).reverts('a');
       fake.getUint256.reset();
 
-      await expect(fake.callStatic.getUint256(123)).not.to.be.reverted;
+      await expect(fake.getUint256.staticCall(123)).not.to.be.reverted;
     });
 
     it('should live together with default', async () => {
       fake.getUint256.reverts('a');
-      fake.getUint256.whenCalledWith(123).reverts('b');
+      fake.getUint256.whenCalledWith(123n).reverts('b');
 
-      await expect(fake.callStatic.getUint256(122)).to.be.revertedWith('a');
-      await expect(fake.callStatic.getUint256(123)).to.be.revertedWith('b');
+      await expect(fake.getUint256.staticCall(122n)).to.be.revertedWith('a');
+      await expect(fake.getUint256.staticCall(123n)).to.be.revertedWith('b');
     });
 
     it('should handle multiple calls', async () => {
-      fake.getUint256.whenCalledWith(1).reverts('a');
-      fake.getUint256.whenCalledWith(2).reverts('b');
+      fake.getUint256.whenCalledWith(1n).reverts('a');
+      fake.getUint256.whenCalledWith(2n).reverts('b');
 
-      await expect(fake.callStatic.getUint256(1)).to.be.revertedWith('a');
-      await expect(fake.callStatic.getUint256(2)).to.be.revertedWith('b');
+      await expect(fake.getUint256.staticCall(1n)).to.be.revertedWith('a');
+      await expect(fake.getUint256.staticCall(2n)).to.be.revertedWith('b');
     });
   });
 });

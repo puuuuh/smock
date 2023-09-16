@@ -1,4 +1,4 @@
-import { utils } from 'ethers';
+import { parseUnits } from 'ethers';
 
 export const ADDRESS_EXAMPLE = '0x558ba9b8d78713fbf768c1f8a584485B4003f43F';
 
@@ -10,7 +10,7 @@ export const BYTES_EXAMPLE =
 export const STRUCT_FIXED_SIZE_EXAMPLE = {
   valBytes32: BYTES32_EXAMPLE,
   valBoolean: true,
-  valUint256: utils.parseUnits('1'),
+  valUint256: parseUnits('1'),
 };
 
 export const STRUCT_DYNAMIC_SIZE_EXAMPLE = {

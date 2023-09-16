@@ -190,6 +190,6 @@ describe('WatchableFunctionLogic: Call count', () => {
   });
 
   async function makeCall() {
-    await caller.call(fake.address, fake.interface.encodeFunctionData('receiveEmpty', []));
+    await caller.call(fake.getAddress(), fake.interface.encodeFunctionData('receiveEmpty', []));
   }
 });

@@ -9,23 +9,37 @@ const gpo = Object.getPrototypeOf;
  * @param struct Struct to convert
  * @returns Struct as POJO
  */
-export function convertStructToPojo(struct: any): object {
-  let obj: { [key: string]: unknown } = {};
+export function convertStructToPojo(struct: any): any {
+  try {
+    let t = struct.toObject();
 
-  Object.entries(struct)
-    .slice(struct.length)
-    .forEach(([key, value]) => {
-      obj[key] = isStruct(value) ? convertStructToPojo(value) : value;
+    let keys = Object.keys(t);
+    for (const i in keys) {
+      let key = keys[i];
+      let value = t[key];
+      if (isSolidityStruct(value)) {
+        t[key] = convertStructToPojo(value);
+      }
+    }
+    return t;
+  } catch (e) {}
+  try {
+    return struct.toArray().map((v: any) => {
+      if (isSolidityStruct(v)) {
+        return convertStructToPojo(v);
+      }
+      return v;
     });
+  } catch (e) {}
 
-  return obj;
+  return struct;
 }
 
-export function convertPojoToStruct(value: Record<string, unknown>, fnFragment: ethers.utils.FunctionFragment): unknown[] {
+export function convertPojoToStruct(value: Record<string, unknown>, fnFragment: ethers.FunctionFragment): unknown[] {
   const parsedValue = {
     [fnFragment.name]: value,
   };
-  const parsedFnFragment: Partial<ethers.utils.ParamType> = {
+  const parsedFnFragment: Partial<ethers.ParamType> = {
     name: fnFragment.name,
     components: fnFragment.outputs!,
   };
@@ -33,7 +47,7 @@ export function convertPojoToStruct(value: Record<string, unknown>, fnFragment: 
   return convertPojoToStructRecursive(parsedValue, [parsedFnFragment])[0];
 }
 
-export function convertPojoToStructRecursive(value: any, fnFragments: Partial<ethers.utils.ParamType>[]): unknown[][] {
+export function convertPojoToStructRecursive(value: any, fnFragments: readonly Partial<ethers.ParamType>[]): unknown[][] {
   let res: unknown[][] = [];
 
   fnFragments.forEach((item) => {
@@ -45,16 +59,6 @@ export function convertPojoToStructRecursive(value: any, fnFragments: Partial<et
   });
 
   return res;
-}
-
-export function getObjectAndStruct(obj1: unknown, obj2: unknown): [object, unknown[]] | undefined {
-  if (isPojo(obj1) && isStruct(obj2)) {
-    return [obj1 as object, obj2 as unknown[]];
-  }
-  if (isPojo(obj2) && isStruct(obj1)) {
-    return [obj2 as object, obj1 as unknown[]];
-  }
-  return;
 }
 
 /**
@@ -70,13 +74,7 @@ export function getObjectAndStruct(obj1: unknown, obj2: unknown): [object, unkno
  * @param obj Object to evaluate
  * @returns Whether or not the object is a struct
  */
-export function isStruct(obj: unknown) {
-  return Array.isArray(obj) && Object.keys(obj).length > obj.length;
-}
-
-export function isPojo(obj: unknown): boolean {
-  if (obj === null || typeof obj !== 'object') {
-    return false;
-  }
-  return gpo(obj) === proto;
+export function isSolidityStruct(obj: unknown): boolean {
+  let result = gpo(obj);
+  return result.hasOwnProperty('toObject') && result.hasOwnProperty('toArray');
 }

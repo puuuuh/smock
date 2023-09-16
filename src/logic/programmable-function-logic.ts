@@ -138,7 +138,7 @@ export class ProgrammableFunctionLogic extends WatchableFunctionLogic {
   private encodeRevertReason(reason: string): Buffer {
     if (reason === undefined) return EMPTY_ANSWER;
 
-    const errorInterface = new ethers.utils.Interface([
+    const errorInterface = new ethers.Interface([
       {
         inputs: [
           {

@@ -1,8 +1,8 @@
 import { Message } from '@nomicfoundation/ethereumjs-evm/dist/message';
-import { FactoryOptions } from '@nomiclabs/hardhat-ethers/types';
-import { BaseContract, BigNumber, ContractFactory, ethers } from 'ethers';
-import { Interface } from 'ethers/lib/utils';
-import { ethers as hardhatEthers } from 'hardhat';
+import { FactoryOptions } from '@nomicfoundation/hardhat-ethers/types';
+import { BaseContract, ContractFactory, Provider, Signer } from 'ethers';
+import { Interface } from 'ethers';
+import { ethers } from 'hardhat';
 import { Observable } from 'rxjs';
 import { distinct, filter, map, share, withLatestFrom } from 'rxjs/operators';
 import { EditableStorageLogic as EditableStorage } from '../logic/editable-storage-logic';
@@ -17,17 +17,27 @@ import { getStorageLayout } from '../utils/storage';
 export async function createFakeContract<Contract extends BaseContract>(
   vm: ObservableVM,
   address: string,
-  contractInterface: ethers.utils.Interface,
-  provider: ethers.providers.Provider
+  contractInterface: Interface,
+  provider: Provider
 ): Promise<FakeContract<Contract>> {
   const fake = (await initContract(vm, address, contractInterface, provider)) as unknown as FakeContract<Contract>;
-  const contractFunctions = getContractFunctionsNameAndSighash(contractInterface, Object.keys(fake.functions));
+  const fakeAddr = await fake.getAddress();
 
-  // attach to every contract function, all the programmable and watchable logic
-  contractFunctions.forEach(([sighash, name]) => {
-    const { encoder, calls$, results$ } = getFunctionEventData(vm, contractInterface, fake.address, sighash);
-    const functionLogic = new SafeProgrammableContract(name, calls$, results$, encoder);
-    fillProgrammableContractFunction(fake[name], functionLogic);
+  fake.interface.forEachFunction((f, i) => {
+    const { encoder, calls$, results$ } = getFunctionEventData(vm, contractInterface, fakeAddr, f.selector);
+    const functionLogic = new SafeProgrammableContract(f.name, calls$, results$, encoder);
+    let inputs = f.inputs
+      .map((f) => {
+        return f.type;
+      })
+      .join(',');
+    let fullName = f.name + '(' + inputs + ')';
+    if (fake[f.name] != null) {
+      fake[f.name] = fillProgrammableContractFunction(fake[f.name], functionLogic);
+    }
+    try {
+      fake[fullName] = fillProgrammableContractFunction(fake[fullName], functionLogic);
+    } catch (_) {}
   });
 
   return fake;
@@ -41,24 +51,28 @@ function mockifyContractFactory<T extends ContractFactory>(
   const realDeploy = factory.deploy;
   factory.deploy = async (...args: Parameters<T['deploy']>) => {
     const mock = await realDeploy.apply(factory, args);
-    const contractFunctions = getContractFunctionsNameAndSighash(mock.interface, Object.keys(mock.functions));
+    let mockAddr = await mock.getAddress();
 
-    // attach to every contract function, all the programmable and watchable logic
-    contractFunctions.forEach(([sighash, name]) => {
-      const { encoder, calls$, results$ } = getFunctionEventData(vm, mock.interface, mock.address, sighash);
-      const functionLogic = new ProgrammableFunctionLogic(name, calls$, results$, encoder);
-      fillProgrammableContractFunction(mock[name], functionLogic);
+    mock.interface.forEachFunction((f, i) => {
+      const { encoder, calls$, results$ } = getFunctionEventData(vm, mock.interface, mockAddr, f.selector);
+      const functionLogic = new ProgrammableFunctionLogic(f.name, calls$, results$, encoder);
+      //if (mock[f.name].fragment.selector === f.selector) {
+      mock[f.name] = fillProgrammableContractFunction(mock[f.name], functionLogic);
+      //}
+      //if (mock[fullName] != null) {
+      //    mock[fullName] = fillProgrammableContractFunction(mock[fullName], functionLogic);
+      //}
     });
 
     // attach to every internal variable, all the editable logic
-    const editableStorage = new EditableStorage(await getStorageLayout(contractName), vm.getManager(), mock.address);
-    const readableStorage = new ReadableStorage(await getStorageLayout(contractName), vm.getManager(), mock.address);
+    const editableStorage = new EditableStorage(await getStorageLayout(contractName), vm.getManager(), mockAddr);
+    const readableStorage = new ReadableStorage(await getStorageLayout(contractName), vm.getManager(), mockAddr);
     mock.setVariable = editableStorage.setVariable.bind(editableStorage);
     mock.setVariables = editableStorage.setVariables.bind(editableStorage);
     mock.getVariable = readableStorage.getVariable.bind(readableStorage);
 
     // We attach a wallet to the contract so that users can send transactions *from* a watchablecontract.
-    mock.wallet = await impersonate(mock.address);
+    mock.wallet = await impersonate(mockAddr);
 
     return mock;
   };
@@ -75,32 +89,28 @@ function mockifyContractFactory<T extends ContractFactory>(
 export async function createMockContractFactory<T extends ContractFactory>(
   vm: ObservableVM,
   contractName: string,
-  signerOrOptions?: ethers.Signer | FactoryOptions
+  signerOrOptions?: Signer | FactoryOptions
 ): Promise<MockContractFactory<T>> {
-  const factory = (await hardhatEthers.getContractFactory(contractName, signerOrOptions)) as unknown as MockContractFactory<T>;
+  const factory = (await ethers.getContractFactory(contractName, signerOrOptions)) as unknown as MockContractFactory<T>;
   return mockifyContractFactory(vm, contractName, factory);
 }
 
-async function initContract(
-  vm: ObservableVM,
-  address: string,
-  contractInterface: ethers.utils.Interface,
-  provider: ethers.providers.Provider
-): Promise<BaseContract> {
+async function initContract(vm: ObservableVM, address: string, contractInterface: Interface, provider: Provider): Promise<BaseContract> {
   // Generate the contract object that we're going to attach our fancy functions to. Doing it this
   // way is nice because it "feels" more like a contract (as long as you're using ethers).
   const contract = new ethers.Contract(address, contractInterface, provider);
+  const contractAddr = await contract.getAddress();
 
   // Set some code into the contract address so hardhat recognize it as a contract
-  await vm.getManager().putContractCode(toFancyAddress(contract.address), Buffer.from('00', 'hex'));
+  await vm.getManager().putContractCode(toFancyAddress(contractAddr), Buffer.from('00', 'hex'));
 
   // We attach a wallet to the contract so that users can send transactions *from* a watchablecontract.
-  (contract as any).wallet = await impersonate(contract.address);
+  (contract as any).wallet = await impersonate(contractAddr);
 
   return contract;
 }
 
-function getFunctionEventData(vm: ObservableVM, contractInterface: ethers.utils.Interface, contractAddress: string, sighash: string | null) {
+function getFunctionEventData(vm: ObservableVM, contractInterface: Interface, contractAddress: string, sighash: string | null) {
   const encoder = getFunctionEncoder(contractInterface, sighash);
   // Filter only the calls that correspond to this function, from vm beforeMessages
   const calls$ = parseAndFilterBeforeMessages(vm.getBeforeMessages(), contractInterface, contractAddress, sighash);
@@ -114,13 +124,13 @@ function getFunctionEventData(vm: ObservableVM, contractInterface: ethers.utils.
   return { encoder, calls$, results$ };
 }
 
-function getFunctionEncoder(contractInterface: ethers.utils.Interface, sighash: string | null): (values?: ProgrammedReturnValue) => string {
+function getFunctionEncoder(contractInterface: Interface, sighash: string | null): (values?: ProgrammedReturnValue) => string {
   if (sighash === null) {
     // if it is a fallback function, return simplest encoder
     return (values) => values;
   } else {
     return (values) => {
-      const fnFragment = contractInterface.getFunction(sighash);
+      const fnFragment = contractInterface.getFunction(sighash)!!;
       try {
         return contractInterface.encodeFunctionResult(fnFragment, [values]);
       } catch {
@@ -140,7 +150,7 @@ function getFunctionEncoder(contractInterface: ethers.utils.Interface, sighash: 
 
 function parseAndFilterBeforeMessages(
   messages$: Observable<Message>,
-  contractInterface: ethers.utils.Interface,
+  contractInterface: Interface,
   contractAddress: string,
   sighash: string | null
 ) {
@@ -165,47 +175,25 @@ function parseAndFilterBeforeMessages(
   );
 }
 
-function fillProgrammableContractFunction(fn: ProgrammableContractFunction, logic: ProgrammableFunctionLogic): void {
-  fn._watchable = logic;
-  fn.atCall = logic.atCall.bind(logic);
-  fn.getCall = logic.getCall.bind(logic);
-  fn.returns = logic.returns.bind(logic);
-  fn.returnsAtCall = logic.returnsAtCall.bind(logic);
-  fn.reverts = logic.reverts.bind(logic);
-  fn.revertsAtCall = logic.revertsAtCall.bind(logic);
-  fn.whenCalledWith = logic.whenCalledWith.bind(logic);
-  fn.reset = logic.reset.bind(logic);
-}
-
-/**
- * When listing function names, hardhat provides all of them twice, for example:
- * - receiveBoolean
- * - receiveBoolean(bool)
- * This happens even though they are not overloaded.
- * This function leaves only one of the options, always priorizing the one without the args
- *
- * @param contractInterface contract interface in order to get the sighash of a name
- * @param names function names to be filtered
- * @returns array of sighash and function name
- */
-function getContractFunctionsNameAndSighash(contractInterface: ethers.utils.Interface, names: string[]): [string | null, string][] {
-  let functions: { [sighash: string]: string } = {};
-
-  names.forEach((name) => {
-    const sighash = contractInterface.getSighash(name);
-    if (!functions[sighash] || !name.includes('(')) {
-      functions[sighash] = name;
-    }
+function fillProgrammableContractFunction(fn: ProgrammableContractFunction, logic: ProgrammableFunctionLogic): any {
+  return Object.assign(fn, {
+    _watchable: logic,
+    atCall: logic.atCall.bind(logic),
+    getCall: logic.getCall.bind(logic),
+    returns: logic.returns.bind(logic),
+    returnsAtCall: logic.returnsAtCall.bind(logic),
+    reverts: logic.reverts.bind(logic),
+    revertsAtCall: logic.revertsAtCall.bind(logic),
+    whenCalledWith: logic.whenCalledWith.bind(logic),
+    reset: logic.reset.bind(logic),
   });
-
-  return [...Object.entries(functions), [null, 'fallback']];
 }
 
 function parseMessage(message: Message, contractInterface: Interface, sighash: string | null): ContractCall {
   return {
     args: sighash === null ? toHexString(message.data) : getMessageArgs(message.data, contractInterface, sighash),
     nonce: Sandbox.getNextNonce(),
-    value: BigNumber.from(message.value.toString()),
+    value: BigInt(message.value.toString()),
     target: fromFancyAddress(message.delegatecall ? message.codeAddress : message.to!),
     delegatedFrom: message.delegatecall ? fromFancyAddress(message.to!) : undefined,
   };
@@ -213,7 +201,7 @@ function parseMessage(message: Message, contractInterface: Interface, sighash: s
 
 function getMessageArgs(messageData: Buffer, contractInterface: Interface, sighash: string): unknown[] {
   try {
-    return contractInterface.decodeFunctionData(contractInterface.getFunction(sighash).format(), toHexString(messageData)) as unknown[];
+    return contractInterface.decodeFunctionData(contractInterface.getFunction(sighash)!!.format(), toHexString(messageData)) as unknown[];
   } catch (err) {
     throw new Error(`Failed to decode message data: ${err}`);
   }

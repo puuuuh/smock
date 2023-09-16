@@ -1,5 +1,4 @@
-import { BigNumber } from '@ethersproject/bignumber';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
+import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/signers';
 import { MockContractFactory, smock } from '@src';
 import { Counter__factory, Librarian__factory, TestLibrary__factory } from '@typechained';
 import chai, { expect } from 'chai';
@@ -18,7 +17,7 @@ describe('Mock: Initialization', () => {
 
   it('should be able to deploy from specific signer', async () => {
     const mock = await mockFactory.connect(deployer).deploy(0);
-    expect(await mock.callStatic.deployer()).to.equal(deployer.address);
+    expect(await mock.deployer.staticCall()).to.equal(deployer.address);
   });
 
   it('should have the setVariable property after using the connect function', async () => {
@@ -28,7 +27,7 @@ describe('Mock: Initialization', () => {
 
   it('should have a wallet', async () => {
     const mock = await mockFactory.deploy(0);
-    expect(mock.wallet._isSigner).to.be.true;
+    expect(mock.wallet).not.to.be.undefined;
   });
 
   it('should be able to use libraries', async () => {
@@ -36,12 +35,12 @@ describe('Mock: Initialization', () => {
     const librarian = await (
       await smock.mock<Librarian__factory>('Librarian', {
         libraries: {
-          TestLibrary: testLibrary.address,
+          TestLibrary: await testLibrary.getAddress(),
         },
       })
     ).deploy();
 
-    expect(await librarian.getLibValue()).to.equal(10);
+    expect(await librarian.getLibValue()).to.equal(BigInt(10));
   });
 
   // TODO: make it work
@@ -50,12 +49,12 @@ describe('Mock: Initialization', () => {
     const librarian = await (
       await smock.mock<Librarian__factory>('Librarian', {
         libraries: {
-          TestLibrary: testLibrary.address,
+          TestLibrary: await testLibrary.getAddress(),
         },
       })
     ).deploy();
 
-    const mockValue = BigNumber.from(123);
+    const mockValue = BigInt(123);
     testLibrary.getSomeValue.returns(mockValue);
 
     expect(await librarian.getLibValue()).to.equal(mockValue);

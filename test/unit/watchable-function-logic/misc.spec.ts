@@ -20,8 +20,9 @@ describe('WatchableFunctionLogic: Miscellaneous', () => {
   });
 
   it('should separate calls from different spies with the same factory', async () => {
+    let addr = await fake.getAddress();
     const otherWatchableContract = await smock.fake<Receiver>('Receiver');
-    await caller.call(fake.address, fake.interface.encodeFunctionData('receiveBoolean', [true]));
+    await caller.call(addr, fake.interface.encodeFunctionData('receiveBoolean', [true]));
     otherWatchableContract.receiveBoolean.should.not.have.been.called;
   });
 
@@ -32,8 +33,9 @@ describe('WatchableFunctionLogic: Miscellaneous', () => {
   });
 
   it('should throw when expecting a delegatedFrom that did not happen', async () => {
+    let addr = await fake.getAddress();
     expect(() => {
-      fake.receiveBoolean.should.be.delegatedFrom(fake.address);
-    }).to.throw(`expected receiveBoolean to have been called via a delegated call by '${fake.address}'`);
+      fake.receiveBoolean.should.be.delegatedFrom(addr);
+    }).to.throw(`expected receiveBoolean to have been called via a delegated call by '${addr}'`);
   });
 });

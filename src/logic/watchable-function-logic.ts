@@ -1,9 +1,8 @@
-import { BigNumber } from 'ethers';
 import isEqual from 'lodash.isequal';
 import isEqualWith from 'lodash.isequalwith';
 import { Observable, of } from 'rxjs';
 import { ContractCall } from '../types';
-import { convertStructToPojo, getObjectAndStruct, humanizeTimes } from '../utils';
+import { convertStructToPojo, humanizeTimes, isSolidityStruct } from '../utils';
 
 export class WatchableFunctionLogic {
   protected name: string;
@@ -28,11 +27,13 @@ export class WatchableFunctionLogic {
   }
 
   calledWith(...expectedCallArgs: unknown[]): boolean {
-    return !!this.callHistory.find((call) => this.isDeepEqual(call.args, expectedCallArgs));
+    return !!this.callHistory.find((call) => {
+      return this.isDeepEqual(call.args, expectedCallArgs);
+    });
   }
 
-  calledWithValue(value: BigNumber): boolean {
-    return !!this.callHistory.find((call) => call.value.eq(value));
+  calledWithValue(value: BigInt): boolean {
+    return !!this.callHistory.find((call) => call.value == value);
   }
 
   alwaysCalledWith(...expectedCallArgs: unknown[]): boolean {
@@ -158,20 +159,39 @@ export class WatchableFunctionLogic {
    */
   private isEqualCustomizer(obj1: unknown, obj2: unknown): boolean | undefined {
     // handle big number comparisons
-    if (BigNumber.isBigNumber(obj1)) {
-      return obj1.eq(obj2 as any);
+    if (typeof obj1 === 'bigint' || typeof obj1 === 'number') {
+      return obj1 == BigInt(obj2);
     }
-    if (BigNumber.isBigNumber(obj2)) {
-      return obj2.eq(obj1 as any);
+    if (typeof obj1 === 'bigint' || typeof obj1 === 'number') {
+      return obj2 == BigInt(obj1);
+    }
+    // handle array == args
+    if (Array.isArray(obj1) && isSolidityStruct(obj2)) {
+      obj2 = obj2.toArray().map((v: any) => {
+        if (isSolidityStruct(v)) {
+          return convertStructToPojo(v);
+        }
+        return v;
+      });
+    }
+    if (Array.isArray(obj2) && isSolidityStruct(obj1)) {
+      obj1 = obj1.toArray().map((v: any) => {
+        if (isSolidityStruct(v)) {
+          return convertStructToPojo(v);
+        }
+        return v;
+      });
     }
 
     // handle struct comparisons
-    const objectAndStruct = getObjectAndStruct(obj1, obj2);
-    if (objectAndStruct) {
-      return isEqual(objectAndStruct[0], convertStructToPojo(objectAndStruct[1]));
+    if (isSolidityStruct(obj1)) {
+      obj1 = convertStructToPojo(obj1);
     }
 
-    // use default lodash comparison
-    return undefined;
+    if (isSolidityStruct(obj2)) {
+      obj2 = convertStructToPojo(obj2);
+    }
+
+    return isEqual(obj1, obj2);
   }
 }
