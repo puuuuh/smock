@@ -163,7 +163,7 @@ export class WatchableFunctionLogic {
       return obj1 == BigInt(obj2);
     }
     if (typeof obj2 === 'bigint' || typeof obj2 === 'number') {
-      return obj2 == BigInt(obj2);
+      return obj2 == BigInt(obj1);
     }
     // handle array == args
     if (Array.isArray(obj1) && isSolidityStruct(obj2)) {
