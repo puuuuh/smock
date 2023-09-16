@@ -1,7 +1,7 @@
 import isEqual from 'lodash.isequal';
 import isEqualWith from 'lodash.isequalwith';
 import { Observable, of } from 'rxjs';
-import { ContractCall } from '../types';
+import { ContractCall } from '@src';
 import { convertStructToPojo, humanizeTimes, isSolidityStruct } from '../utils';
 
 export class WatchableFunctionLogic {
@@ -162,8 +162,8 @@ export class WatchableFunctionLogic {
     if (typeof obj1 === 'bigint' || typeof obj1 === 'number') {
       return obj1 == BigInt(obj2);
     }
-    if (typeof obj1 === 'bigint' || typeof obj1 === 'number') {
-      return obj2 == BigInt(obj1);
+    if (typeof obj2 === 'bigint' || typeof obj2 === 'number') {
+      return obj2 == BigInt(obj2);
     }
     // handle array == args
     if (Array.isArray(obj1) && isSolidityStruct(obj2)) {
